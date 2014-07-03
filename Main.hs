@@ -1,4 +1,5 @@
-import Network.HTTP
+{-# LANGUAGE OverloadedStrings #-}
+
 import Network.HTTP.Conduit
 import Control.Monad
 import System.Environment
@@ -14,17 +15,19 @@ userName = do
 
 
 loadCommitHistory :: String -> IO L.ByteString
-loadCommitHistory username = simpleHttp ("https://api.github.com/repos/" ++ username ++ "/jscity/commits")
+loadCommitHistory username = do
+    withManager $ \manager -> do
+                      res <- httpLbs req manager
+                      return (responseBody res)
+  where
+    req0 = fromJust (parseUrl $ "https://api.github.com/repos/" ++ username ++ "/jscity/commits")
+    req = req0 { requestHeaders = [("User-Agent", "johnfn")] }
+
+
 
 main :: IO ()
 main = do
-  --history <- userName >>= loadCommitHistory
-
-  let req = parseUrl "https://api.github.com/repos/johnfn/jscity/commits"
-  withManager $ \manager -> do
-                    res <- httpLbs (fromJust req) manager
-                    liftIO $ L.putStr $ responseBody res
-
+  loadCommitHistory "johnfn" >>= L.putStrLn
 
   -- L.putStrLn history
   -- let name = if (length args > 0) then head args else "johnfn  "
