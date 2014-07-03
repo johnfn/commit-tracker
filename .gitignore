@@ -1,0 +1,6 @@
+.cabal-sandbox/
+*.swp
+Main
+*.hi
+*.o
+dist/
