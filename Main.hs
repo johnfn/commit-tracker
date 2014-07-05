@@ -17,7 +17,7 @@ import Control.Monad.IO.Class (liftIO)
 
 data JSON = JVal String | JObj [(String, JSON)] | JArr [JSON] deriving Show
 
-data Tree = Node [String] [Tree] | Leaf deriving Show
+data Tree = Node [Tree] | Leaf String deriving Show
 
 getDepths :: [String] -> [(String, Int)]
 getDepths list =
@@ -28,15 +28,23 @@ getDepths list =
     go ((result, depth):rest) chunk          = [(result ++ chunk, depth)] ++ rest
 
 
+mytrace :: (Show b) => b -> a -> a
+mytrace b a = trace ("----" ++ (show b) ++ "----") a
+
+dbg :: (Show a) => a -> a
+dbg a = mytrace a a
+
+-- {abc {def} gg {hi}}
+-- Tree ["abc", Tree["def"], "gg", Tree["hi"]]
 toTree :: [(String, Int)] -> Tree
-toTree [] = Leaf
-toTree list =
-    Node onLevel $ map toTree (map reduceDepths notOnLevel)
+toTree [] = Leaf ""
+toTree [(str, 0)] = Leaf str
+toTree list = Node $ map toTree $ groups
   where
-    reduceDepths l = map (\(result, depth) -> (result, depth - 1)) l
+    reduceDepths (result, depth) = (result, depth - 1)
+    newList = map reduceDepths list
     isThisLevel (str, depth) = depth == 0
-    onLevel :: [String] = map fst $ filter isThisLevel list
-    notOnLevel = splitWhen isThisLevel list
+    groups :: [[(String, Int)]] = split (dropFinalBlank $ dropInitBlank $ whenElt isThisLevel) newList
 
 {-
 toNestedList :: String -> Tree
@@ -50,8 +58,14 @@ toNestedList str =
     depths :: [(String, Int)] =
 -}
 
+hasData :: (String, Int) -> Bool
+hasData ("", _) = False
+hasData _ = True
+
 parseJSON :: String -> Tree
-parseJSON str = toTree $ getDepths $ split (oneOf "{}") str
+parseJSON str = (trace $ show d) $ toTree d
+  where
+    d = filter hasData $ getDepths $ split (oneOf "{}") str
 
 
 -- parseJSON :: String -> JSON
