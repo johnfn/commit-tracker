@@ -17,6 +17,7 @@ import Data.Maybe
 import Data.Aeson.Generic
 import qualified Data.Text as Text
 import qualified Data.Map as Map
+import qualified Data.HashMap.Lazy as HM
 import Debug.Trace
 
 import qualified Data.ByteString.Lazy as L
@@ -51,35 +52,26 @@ loadCommitHistory username = do
     req = req0 { requestHeaders = [("User-Agent", "johnfn")] }
 -}
 
+-- TODO: investigate what it means to cast to Maybe Day and how we can cast to many different types. seemz cool.
+
+-- String is dumb, but Days aren't hashable (??????)
 getDate :: Commit -> Day
 getDate = fromJust . (parseTime defaultTimeLocale "%Y-%m-%d") . (takeWhile (/='T')) . date . author . commit
+
+-- my candidate for sexiest line of haskell
+-- this would be like 15 lines of javascript
+buildMap :: [String] -> HM.HashMap String Int
+buildMap days = HM.fromListWith (+) $ zip days $ repeat 1
 
 main :: IO ()
 main = do
   let json = fromJust (decode massive :: Maybe [Commit])
 
-  putStrLn $ show $ map getDate json
+  let dates = map show $ map getDate json
 
-  -- TODO: investigate what it means to cast to Maybe Day and how we can cast to many different types. seemz cool.
-  --  (parseTime defaultTimeLocale "%Y-%m-%d" "2014-07-01") :: Maybe Day
+  putStrLn $ show $ buildMap dates
 
   return ()
-
-  -- putStrLn $ Map.lookup "date" commitInfo
-
-  -- let author = unwrapObject $ fromJust $ Map.lookup "author" commitInfo
-
-
-
-  -- loadCommitHistory "johnfn" >>= L.putStrLn
-
-  --putStrLn $ show $ decode "{a: 5, b: \"sdf\"}" :: Maybe Value
-
-  -- L.putStrLn history
-  -- let name = if (length args > 0) then head args else "johnfn  "
-
-
-
 
 
 massive :: L.ByteString
