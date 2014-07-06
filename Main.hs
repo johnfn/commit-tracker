@@ -3,6 +3,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
+-- TODO: Investigate what it means to cast to Maybe Day and how we can cast to many different types. seemz cool.
+-- TODO: Pagination
+
 import System.IO
 import GHC.Generics
 import Network.HTTP.Conduit
@@ -56,7 +59,6 @@ loadPage url = do
     req0 = fromJust $ parseUrl url
     req = req0 { requestHeaders = [("User-Agent", "johnfn")] }
 
--- TODO: investigate what it means to cast to Maybe Day and how we can cast to many different types. seemz cool.
 
 -- String is dumb, but Days aren't hashable (??????)
 getDate :: Commit -> Day
@@ -64,8 +66,11 @@ getDate = fromJust . (parseTime defaultTimeLocale "%Y-%m-%d") . (takeWhile (/='T
 
 -- my candidate for sexiest line of haskell
 -- this would be like 15 lines of javascript
-buildMap :: [String] -> HM.HashMap String Int
-buildMap days = HM.fromListWith (+) $ zip days $ repeat 1
+buildMap :: [String] -> (String -> String) HM.HashMap String Int
+buildMap bucketingScheme days = 
+    HM.fromListWith (+) $ zip bucketedDays $ repeat 1
+  where
+    bucketedDays = map bucketingScheme days
 
 showMap :: HM.HashMap String Int -> IO ()
 showMap frequencies = do
@@ -95,33 +100,6 @@ test a b = putStrLn (a ++ "," ++ b)
 
 main :: IO ()
 main = do
-  repos <- repoNames "johnfn" >>= return . take 5
-
-  -- dates <- sequence $ map (uncurry loadCommitDates) repos
-
-  putStrLn $ show repos
-
-  -- showMap $ buildMap $ map show dates
-
-  return ()
-
-  {-
-  uname <- userName
-  r <- repoNames uname
-
-  allData <- map 
-  -}
-  
-  {-
-  massive <- loadPage $ "https://api.github.com/repos/" ++ u ++ "/commit-tracker/commits"
-  let json = fromJust (decode massive :: Maybe [Commit])
-  let dates = map (show . getDate) json
-  let frequencies = buildMap dates
-  let sortedKeys = sortBy (\(d1, v1) (d2, v2) -> compare d1 d2) $ HM.toList frequencies
-
-  putStrLn $ show $ sortedKeys
-
-  sequence $ map (\(d, v) -> putStrLn $ d ++ " " ++ (replicate v '+')) sortedKeys
-
-  return ()
-  -}
+  repos <- repoNames "johnfn" >>= return . take 10
+  dates :: [Day] <- (sequence $ map (uncurry loadCommitDates) repos) >>= return . concat
+  showMap $ buildMap id $ map show dates
