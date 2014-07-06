@@ -10,9 +10,11 @@ import Control.Monad
 import System.Environment
 import Data.Typeable
 import Data.Data
+import Data.Time.Calendar
+import Data.Time.Format
+import System.Locale
 import Data.Maybe
 import Data.Aeson.Generic
-import Data.HashMap.Lazy as HM
 import qualified Data.Text as Text
 import qualified Data.Map as Map
 import Debug.Trace
@@ -33,15 +35,6 @@ data Commit = Commit {
   commit :: CommitInfo
 } deriving (Data, Typeable, Show)
 
--- parseJSON :: String -> JSON
-
-{-
-instance FromJSON Commits where
-  parseJSON (Object o) = do
-    commits <- mapM parseJSON . filter (\(Object ref) -> True) =<< o .: "references"
-    commits
--}
-
 userName :: IO String
 userName = do
   args <- getArgs
@@ -58,30 +51,17 @@ loadCommitHistory username = do
     req = req0 { requestHeaders = [("User-Agent", "johnfn")] }
 -}
 
-{-
-unwrapValue :: Value -> Object
-unwrapValue (Object val) = val
-
-hax = do
-  result <- decode massive
-  flip parseMaybe result $ \obj -> do
-    xx <- obj .: "commit"
-    return (xx)
-
--}
-
-{-}
-loadCommitDate = do
-  return hax
--}
+getDate :: Commit -> Day
+getDate = fromJust . (parseTime defaultTimeLocale "%Y-%m-%d") . (takeWhile (/='T')) . date . author . commit
 
 main :: IO ()
 main = do
   let json = fromJust (decode massive :: Maybe [Commit])
 
-  let individual = json !! 0
+  putStrLn $ show $ map getDate json
 
-  putStrLn $ show individual
+  -- TODO: investigate what it means to cast to Maybe Day and how we can cast to many different types. seemz cool.
+  --  (parseTime defaultTimeLocale "%Y-%m-%d" "2014-07-01") :: Maybe Day
 
   return ()
 
