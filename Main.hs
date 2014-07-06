@@ -7,6 +7,7 @@ import System.IO
 import GHC.Generics
 --import Network.HTTP.Conduit
 import Control.Monad
+import Data.List
 import System.Environment
 import Data.Typeable
 import Data.Data
@@ -66,12 +67,40 @@ buildMap days = HM.fromListWith (+) $ zip days $ repeat 1
 main :: IO ()
 main = do
   let json = fromJust (decode massive :: Maybe [Commit])
+  let dates = map (show . getDate) json
+  let frequencies = buildMap dates
+  let sortedKeys = sortBy (\(d1, v1) (d2, v2) -> compare d1 d2) $ HM.toList frequencies
 
-  let dates = map show $ map getDate json
+  putStrLn $ show $ sortedKeys
 
-  putStrLn $ show $ buildMap dates
+  sequence $ map (\(d, v) -> putStrLn $ d ++ " " ++ (replicate v '+')) sortedKeys
 
   return ()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 massive :: L.ByteString
