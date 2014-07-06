@@ -67,10 +67,20 @@ getDate = fromJust . (parseTime defaultTimeLocale "%Y-%m-%d") . (takeWhile (/='T
 buildMap :: [String] -> HM.HashMap String Int
 buildMap days = HM.fromListWith (+) $ zip days $ repeat 1
 
-repoNames :: String -> IO [String]
+showMap :: HM.HashMap String Int -> IO ()
+showMap frequencies = do
+    sequence_ $ map (\(d, v) -> putStrLn $ d ++ " " ++ replicate v '+') sortedKeys
+  where
+    sortedKeys :: [(String, Int)] = sortBy (\k1 k2 -> compare (fst k1) (fst k2)) $ HM.toList frequencies
+
+repoNames :: String -> IO [(String, String)]
 repoNames username = do
-  repos <- loadPage $ "https://api.github.com/users/" ++ username ++ "/repos?q=&per_page=100" -- someday, i might have to deal with having more than 100 repos.
-  return $ map full_name $ fromJust (decode repos :: Maybe [Repo])
+    repoJSON <- loadPage $ "https://api.github.com/users/" ++ username ++ "/repos?q=&per_page=100" -- someday, i might have to deal with having more than 100 repos.
+    let repos :: [Repo] = fromJust (decode repoJSON :: Maybe [Repo])
+
+    return $ map grabName $ repos 
+  where 
+    grabName :: Repo -> (String, String) = arrToTuple . splitOn "/" . full_name
 
 loadCommitDates :: String -> String -> IO [Day]
 loadCommitDates username reponame = do
@@ -85,12 +95,13 @@ test a b = putStrLn (a ++ "," ++ b)
 
 main :: IO ()
 main = do
-  dates <- loadCommitDates "johnfn" "Fathom"
-  putStrLn $ show dates
+  repos <- repoNames "johnfn" >>= return . take 5
 
-  repos <- repoNames "johnfn" >>= return . (map $ arrToTuple . (splitOn "/")) . take 5
+  -- dates <- sequence $ map (uncurry loadCommitDates) repos
 
-  sequence $ map (uncurry test) repos
+  putStrLn $ show repos
+
+  -- showMap $ buildMap $ map show dates
 
   return ()
 
