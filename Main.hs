@@ -8,16 +8,30 @@ import GHC.Generics
 --import Network.HTTP.Conduit
 import Control.Monad
 import System.Environment
+import Data.Typeable
+import Data.Data
 import Data.Maybe
-import Data.Aeson
+import Data.Aeson.Generic
+import Data.HashMap.Lazy as HM
+import qualified Data.Text as Text
 import qualified Data.Map as Map
 import Debug.Trace
 
 import qualified Data.ByteString.Lazy as L
 
-data JSON = JVal String | JObj [(String, JSON)] | JArr [JSON] deriving Show
+data Author = Author {
+  name :: String,
+  email :: String,
+  date :: String
+} deriving (Data, Typeable, Show)
 
-data Tree = Node [Tree] | Leaf String deriving Show
+data CommitInfo = CommitInfo {
+  author :: Author
+} deriving (Data, Typeable, Show)
+
+data Commit = Commit {
+  commit :: CommitInfo
+} deriving (Data, Typeable, Show)
 
 -- parseJSON :: String -> JSON
 
@@ -44,15 +58,37 @@ loadCommitHistory username = do
     req = req0 { requestHeaders = [("User-Agent", "johnfn")] }
 -}
 
+{-
+unwrapValue :: Value -> Object
+unwrapValue (Object val) = val
+
+hax = do
+  result <- decode massive
+  flip parseMaybe result $ \obj -> do
+    xx <- obj .: "commit"
+    return (xx)
+
+-}
+
+{-}
+loadCommitDate = do
+  return hax
+-}
+
 main :: IO ()
 main = do
-  let outerJSON = (decode massive) :: Maybe [Map.Map String L.ByteString]
-  let jj = fromJust outerJSON
-  let first = jj !! 0
-  let commitInfo = fromJust $ Map.lookup "commit" first
-  let pCommitInfo = fromJust $ (decode commitInfo) :: Maybe [Map.Map String Value]
+  let json = fromJust (decode massive :: Maybe [Commit])
 
-  putStrLn $ show pCommitInfo
+  let individual = json !! 0
+
+  putStrLn $ show individual
+
+  return ()
+
+  -- putStrLn $ Map.lookup "date" commitInfo
+
+  -- let author = unwrapObject $ fromJust $ Map.lookup "author" commitInfo
+
 
 
   -- loadCommitHistory "johnfn" >>= L.putStrLn
