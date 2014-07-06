@@ -66,7 +66,7 @@ getDate = fromJust . (parseTime defaultTimeLocale "%Y-%m-%d") . (takeWhile (/='T
 
 -- my candidate for sexiest line of haskell
 -- this would be like 15 lines of javascript
-buildMap :: [String] -> (String -> String) HM.HashMap String Int
+buildMap :: (String -> String) -> [String] -> HM.HashMap String Int
 buildMap bucketingScheme days = 
     HM.fromListWith (+) $ zip bucketedDays $ repeat 1
   where
@@ -89,7 +89,7 @@ repoNames username = do
 
 loadCommitDates :: String -> String -> IO [Day]
 loadCommitDates username reponame = do
-  page <- loadPage $ "https://api.github.com/repos/" ++ username ++ "/" ++ reponame ++ "/commits"
+  page <- loadPage $ "https://api.github.com/repos/" ++ username ++ "/" ++ reponame ++ "/commits?q=&per_page=100"
   return $ map getDate $ fromJust (decode page :: Maybe [Commit])
 
 arrToTuple :: [a] -> (a, a)
