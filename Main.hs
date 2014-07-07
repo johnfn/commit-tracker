@@ -102,19 +102,18 @@ loadCommitObj since repoOwner reponame = do
 
 loadCommitDates :: Maybe String -> String -> String -> IO [Day]
 loadCommitDates since repoOwner reponame = 
-  loadCommitObj since repoOwner reponame >>= return . (map getDate)
+  loadCommitObj since repoOwner reponame >>= return . map getDate
 
 loadAllCommits :: String -> String -> IO [Day]
-loadAllCommits repoOwner reponame = do
-    go [] Nothing
+loadAllCommits repoOwner reponame = go [] Nothing
   where
     go acc oldestDay = do
       commitObjs :: [Commit] <- loadCommitObj oldestDay repoOwner reponame
       let commits :: [Day] = map getDate commitObjs
 
-      if (length commits) == 0 then
+      if null commits then
         return acc
-      else do
+      else 
         go (acc ++ commits) (Just $ (noquotes. show . date . author . commit) (last commitObjs))
 
 arrToTuple :: [a] -> (a, a)
@@ -124,4 +123,4 @@ arrToTuple _ = error "arrToTuple on something weird"
 main :: IO ()
 main = do
   cc <- loadAllCommits "johnfn" "Fathom"
-  putStrLn $ show cc
+  print cc
