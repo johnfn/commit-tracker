@@ -46,10 +46,10 @@ data Repo = Repo {
 userName :: IO String
 userName = do
   args <- getArgs
-  return (if (length args > 0) then head args else "johnfn")
+  return (if (not $ null args) then head args else "johnfn")
 
 loadPage :: String -> IO L.ByteString
-loadPage url = do
+loadPage url =
     withManager $ \manager -> do
                       res <- httpLbs req manager
                       return (responseBody res)
@@ -58,9 +58,9 @@ loadPage url = do
     req = req0 { requestHeaders = [("User-Agent", "johnfn")] }
 
 params :: [(String, String)] -> String
-params paramList = "?q=" ++ (intercalate "&" $ map showParam paramList)
+params paramList = "?q=" ++ intercalate "&" (map showParam paramList)
   where
-    showParam (key, val) = key ++ "=" ++ (val)
+    showParam (key, val) = key ++ "=" ++ val
 
 -- String is dumb, but Days aren't hashable (??????)
 getDate :: Commit -> Day
@@ -76,7 +76,7 @@ buildMap bucketingScheme days =
 
 showMap :: Map.Map Day Int -> IO ()
 showMap frequencies = do
-    sequence_ $ map (\(d, v) -> putStrLn $ (show d) ++ " " ++ replicate v '+') sortedKeys
+    mapM_ (\(d, v) -> putStrLn $ (show d) ++ " " ++ replicate v '+') sortedKeys
   where
     sortedKeys :: [(Day, Int)] = sortBy (\k1 k2 -> compare (fst k1) (fst k2)) $ Map.toList frequencies
 
@@ -85,7 +85,7 @@ repoNames username = do
     repoJSON <- loadPage $ "https://api.github.com/users/" ++ username ++ "/repos" ++ params [("per_page", "100")] -- someday, i might have to deal with having more than 100 repos.
     let repos :: [Repo] = fromJust (decode repoJSON :: Maybe [Repo])
 
-    return $ map grabName $ repos 
+    return $ map grabName repos 
   where 
     grabName :: Repo -> (String, String) = arrToTuple . splitOn "/" . full_name
 
