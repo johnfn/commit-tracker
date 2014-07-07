@@ -22,7 +22,6 @@ import Data.Maybe
 import Data.Aeson.Generic
 import qualified Data.Text as Text
 import qualified Data.Map as Map
-import qualified Data.HashMap.Lazy as HM
 import Debug.Trace
 
 import qualified Data.ByteString.Lazy as L
@@ -66,17 +65,17 @@ getDate = fromJust . (parseTime defaultTimeLocale "%Y-%m-%d") . (takeWhile (/='T
 
 -- my candidate for sexiest line of haskell
 -- this would be like 15 lines of javascript
-buildMap :: (String -> String) -> [String] -> HM.HashMap String Int
+buildMap :: (Day -> Day) -> [Day] -> Map.Map Day Int
 buildMap bucketingScheme days = 
-    HM.fromListWith (+) $ zip bucketedDays $ repeat 1
+    Map.fromListWith (+) $ zip bucketedDays $ repeat 1
   where
     bucketedDays = map bucketingScheme days
 
-showMap :: HM.HashMap String Int -> IO ()
+showMap :: Map.Map Day Int -> IO ()
 showMap frequencies = do
-    sequence_ $ map (\(d, v) -> putStrLn $ d ++ " " ++ replicate v '+') sortedKeys
+    sequence_ $ map (\(d, v) -> putStrLn $ (show d) ++ " " ++ replicate v '+') sortedKeys
   where
-    sortedKeys :: [(String, Int)] = sortBy (\k1 k2 -> compare (fst k1) (fst k2)) $ HM.toList frequencies
+    sortedKeys :: [(Day, Int)] = sortBy (\k1 k2 -> compare (fst k1) (fst k2)) $ Map.toList frequencies
 
 repoNames :: String -> IO [(String, String)]
 repoNames username = do
@@ -102,4 +101,4 @@ main :: IO ()
 main = do
   repos <- repoNames "johnfn" >>= return . take 10
   dates :: [Day] <- (sequence $ map (uncurry loadCommitDates) repos) >>= return . concat
-  showMap $ buildMap id $ map show dates
+  showMap $ buildMap id $ dates
