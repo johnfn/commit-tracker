@@ -95,8 +95,6 @@ noquotes = tail . init
 -- NOTE : repoOwner may be different than the current user...
 loadCommitObj :: Maybe String -> String -> String -> IO [Commit]
 loadCommitObj since repoOwner reponame = do
-    putStrLn $ show paramList
-
     page <- loadPage $ "https://api.github.com/repos/" ++ repoOwner ++ "/" ++ reponame ++ "/commits" ++ paramList
     return $ fromJust (decode page :: Maybe [Commit])
   where
@@ -114,20 +112,14 @@ loadAllCommits repoOwner reponame = do
       commitObjs :: [Commit] <- loadCommitObj oldestDay repoOwner reponame
       let commits :: [Day] = map getDate commitObjs
 
-      putStrLn $ "loaded " ++ (show $ length commits) ++ " commits"
-      putStrLn $ show commits
-
       if (length commits) == 0 then
         return acc
       else do
-        result <- go (acc ++ commits) (Just $ (noquotes. show . date . author . commit) (last commitObjs))
-        return result
+        go (acc ++ commits) (Just $ (noquotes. show . date . author . commit) (last commitObjs))
 
 arrToTuple :: [a] -> (a, a)
 arrToTuple [a, b] = (a, b)
 arrToTuple _ = error "arrToTuple on something weird"
-
-test a b = putStrLn (a ++ "," ++ b)
 
 main :: IO ()
 main = do
