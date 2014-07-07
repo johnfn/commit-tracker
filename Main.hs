@@ -99,13 +99,18 @@ repoNames username = do
   where 
     grabName :: Repo -> (String, String) = arrToTuple . splitOn "/" . full_name
 
+noquotes :: [a] -> [a]
+noquotes = tail . init
+
 -- NOTE : repoOwner may be different than the current user...
 loadCommitObj :: Maybe String -> String -> String -> IO [Commit]
 loadCommitObj since repoOwner reponame = do
+    putStrLn $ show paramList
+
     page <- loadPage $ "https://api.github.com/repos/" ++ repoOwner ++ "/" ++ reponame ++ "/commits" ++ paramList
     return $ fromJust (decode page :: Maybe [Commit])
   where
-    paramList = params $ [("per_page", "100"), ("author", repoOwner)] ++ (fromMaybe [] (fmap (\x -> [("since", x)]) since))
+    paramList = params $ [("per_page", "100"), ("author", repoOwner)] ++ (fromMaybe [] (fmap (\x -> [("until", x)]) since))
 
 loadCommitDates :: Maybe String -> String -> String -> IO [Day]
 loadCommitDates since repoOwner reponame = 
@@ -120,11 +125,12 @@ loadAllCommits repoOwner reponame = do
       let commits :: [Day] = map getDate commitObjs
 
       putStrLn $ "loaded " ++ (show $ length commits) ++ " commits"
+      putStrLn $ show commits
 
       if (length commits) == 0 then
         return acc
       else do
-        result <- go (acc ++ commits) (Just $ show $ ((date . author . commit) (last commitObjs)))
+        result <- go (acc ++ commits) (Just $ (noquotes. show . date . author . commit) (last commitObjs))
         return result
 
 arrToTuple :: [a] -> (a, a)
@@ -137,8 +143,3 @@ main :: IO ()
 main = do
   cc <- loadAllCommits "johnfn" "Fathom"
   putStrLn $ show cc
-  {-
-  repos <- repoNames "johnfn" >>= return . take 10
-  dates :: [Day] <- (sequence $ map (uncurry (loadCommitDates Nothing)) repos) >>= return . concat
-  showMap $ buildMap id $ dates
-  -}
