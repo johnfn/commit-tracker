@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
 
 -- TODO: Investigate what it means to cast to Maybe Day and how we can cast to many different types. seemz cool.
 -- TODO: Pagination
@@ -23,7 +22,6 @@ import Data.Aeson.Generic
 import qualified Data.Text as Text
 import qualified Data.Map as Map
 import Debug.Trace
-import Data.Maybe
 
 import qualified Data.ByteString.Lazy as L
 
@@ -44,6 +42,16 @@ data Commit = Commit {
 data Repo = Repo {
   full_name :: String
 } deriving (Data, Typeable, Show)
+
+untilM :: Monad m => (a -> m Bool) -> m a -> m [a]
+untilM p a = untilM' p a []
+  where
+    untilM' p a acc = do
+      x <- a
+      done <- p x
+      if done
+        then return acc
+        else untilM' p a (acc ++ [x])
 
 userName :: IO String
 userName = do
@@ -92,16 +100,32 @@ repoNames username = do
     grabName :: Repo -> (String, String) = arrToTuple . splitOn "/" . full_name
 
 -- NOTE : repoOwner may be different than the current user...
-loadCommitDates :: Maybe String -> String -> String -> IO [Day]
-loadCommitDates since repoOwner reponame = do
+loadCommitObj :: Maybe String -> String -> String -> IO [Commit]
+loadCommitObj since repoOwner reponame = do
     page <- loadPage $ "https://api.github.com/repos/" ++ repoOwner ++ "/" ++ reponame ++ "/commits" ++ paramList
-    return $ map getDate $ fromJust (decode page :: Maybe [Commit])
+    return $ fromJust (decode page :: Maybe [Commit])
   where
     paramList = params $ [("per_page", "100"), ("author", repoOwner)] ++ (fromMaybe [] (fmap (\x -> [("since", x)]) since))
 
---loadAllCommits :: String -> String -> IO [Day]
---loadAllCommits repoOwner reponame 
+loadCommitDates :: Maybe String -> String -> String -> IO [Day]
+loadCommitDates since repoOwner reponame = 
+  loadCommitObj since repoOwner reponame >>= return . (map getDate)
 
+loadAllCommits :: String -> String -> IO [Day]
+loadAllCommits repoOwner reponame = do
+    go [] Nothing
+  where
+    go acc oldestDay = do
+      commitObjs :: [Commit] <- loadCommitObj oldestDay repoOwner reponame
+      let commits :: [Day] = map getDate commitObjs
+
+      putStrLn $ "loaded " ++ (show $ length commits) ++ " commits"
+
+      if (length commits) == 0 then
+        return acc
+      else do
+        result <- go (acc ++ commits) (Just $ show $ ((date . author . commit) (last commitObjs)))
+        return result
 
 arrToTuple :: [a] -> (a, a)
 arrToTuple [a, b] = (a, b)
@@ -111,6 +135,10 @@ test a b = putStrLn (a ++ "," ++ b)
 
 main :: IO ()
 main = do
+  cc <- loadAllCommits "johnfn" "Fathom"
+  putStrLn $ show cc
+  {-
   repos <- repoNames "johnfn" >>= return . take 10
   dates :: [Day] <- (sequence $ map (uncurry (loadCommitDates Nothing)) repos) >>= return . concat
   showMap $ buildMap id $ dates
+  -}
