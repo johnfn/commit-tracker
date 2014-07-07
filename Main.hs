@@ -58,6 +58,10 @@ loadPage url = do
     req0 = fromJust $ parseUrl url
     req = req0 { requestHeaders = [("User-Agent", "johnfn")] }
 
+params :: [(String, String)] -> String
+params paramList = "?q=" ++ (intercalate "&" $ map showParam paramList)
+  where
+    showParam (key, val) = key ++ "=" ++ (val)
 
 -- String is dumb, but Days aren't hashable (??????)
 getDate :: Commit -> Day
@@ -79,16 +83,17 @@ showMap frequencies = do
 
 repoNames :: String -> IO [(String, String)]
 repoNames username = do
-    repoJSON <- loadPage $ "https://api.github.com/users/" ++ username ++ "/repos?q=&per_page=100" -- someday, i might have to deal with having more than 100 repos.
+    repoJSON <- loadPage $ "https://api.github.com/users/" ++ username ++ "/repos" ++ params [("per_page", "100")] -- someday, i might have to deal with having more than 100 repos.
     let repos :: [Repo] = fromJust (decode repoJSON :: Maybe [Repo])
 
     return $ map grabName $ repos 
   where 
     grabName :: Repo -> (String, String) = arrToTuple . splitOn "/" . full_name
 
+-- NOTE : repoOwner may be different than the current user...
 loadCommitDates :: String -> String -> IO [Day]
-loadCommitDates username reponame = do
-  page <- loadPage $ "https://api.github.com/repos/" ++ username ++ "/" ++ reponame ++ "/commits?q=&per_page=100"
+loadCommitDates repoOwner reponame = do
+  page <- loadPage $ "https://api.github.com/repos/" ++ repoOwner ++ "/" ++ reponame ++ "/commits" ++ params[("per_page", "100"), ("author", repoOwner)]
   return $ map getDate $ fromJust (decode page :: Maybe [Commit])
 
 arrToTuple :: [a] -> (a, a)
