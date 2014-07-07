@@ -23,6 +23,7 @@ import Data.Aeson.Generic
 import qualified Data.Text as Text
 import qualified Data.Map as Map
 import Debug.Trace
+import Data.Maybe
 
 import qualified Data.ByteString.Lazy as L
 
@@ -91,10 +92,16 @@ repoNames username = do
     grabName :: Repo -> (String, String) = arrToTuple . splitOn "/" . full_name
 
 -- NOTE : repoOwner may be different than the current user...
-loadCommitDates :: String -> String -> IO [Day]
-loadCommitDates repoOwner reponame = do
-  page <- loadPage $ "https://api.github.com/repos/" ++ repoOwner ++ "/" ++ reponame ++ "/commits" ++ params[("per_page", "100"), ("author", repoOwner)]
-  return $ map getDate $ fromJust (decode page :: Maybe [Commit])
+loadCommitDates :: Maybe String -> String -> String -> IO [Day]
+loadCommitDates since repoOwner reponame = do
+    page <- loadPage $ "https://api.github.com/repos/" ++ repoOwner ++ "/" ++ reponame ++ "/commits" ++ paramList
+    return $ map getDate $ fromJust (decode page :: Maybe [Commit])
+  where
+    paramList = params $ [("per_page", "100"), ("author", repoOwner)] ++ (fromMaybe [] (fmap (\x -> [("since", x)]) since))
+
+--loadAllCommits :: String -> String -> IO [Day]
+--loadAllCommits repoOwner reponame 
+
 
 arrToTuple :: [a] -> (a, a)
 arrToTuple [a, b] = (a, b)
@@ -105,5 +112,5 @@ test a b = putStrLn (a ++ "," ++ b)
 main :: IO ()
 main = do
   repos <- repoNames "johnfn" >>= return . take 10
-  dates :: [Day] <- (sequence $ map (uncurry loadCommitDates) repos) >>= return . concat
+  dates :: [Day] <- (sequence $ map (uncurry (loadCommitDates Nothing)) repos) >>= return . concat
   showMap $ buildMap id $ dates
