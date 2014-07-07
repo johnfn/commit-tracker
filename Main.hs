@@ -43,16 +43,6 @@ data Repo = Repo {
   full_name :: String
 } deriving (Data, Typeable, Show)
 
-untilM :: Monad m => (a -> m Bool) -> m a -> m [a]
-untilM p a = untilM' p a []
-  where
-    untilM' p a acc = do
-      x <- a
-      done <- p x
-      if done
-        then return acc
-        else untilM' p a (acc ++ [x])
-
 userName :: IO String
 userName = do
   args <- getArgs
