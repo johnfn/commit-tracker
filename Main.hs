@@ -122,5 +122,12 @@ arrToTuple _ = error "arrToTuple on something weird"
 
 main :: IO ()
 main = do
-  cc <- loadAllCommits "johnfn" "Fathom"
-  print cc
+  allRepos <- repoNames "johnfn"
+  print allRepos
+
+  commits <- mapM (uncurry loadAllCommits) allRepos >>= return . concat
+
+  print commits
+
+  --cc <- loadAllCommits "johnfn" "Fathom"
+  --print cc
